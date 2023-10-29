@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
@@ -33,8 +34,15 @@ async function run() {
         app.post('/jwt', async (req, res) => {
             const user = req.body;
             console.log(user);
-            const token = jwt.sign(user, 'secret', { expiresIn: '1h' })
-            res.send(token);
+            const token = jwt.sign(user, process.env.CAR_DOCTOR_TOKEN_SECRET, { expiresIn: '1h' })
+
+            res
+                .cookie('token', token, {
+                    httpOnly: true,
+                    secure: false, // http://localhost:5000
+                    sameSite: 'none'
+                })
+                .send({ success: true })
         })
 
         // services related api
