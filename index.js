@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
-const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken'); // to generate token
+const cookieParser = require('cookie-parser'); // to view (visible format) token
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
@@ -9,8 +9,8 @@ const port = process.env.PORT || 5000;
 
 // middleware
 app.use(cors({
-    origin: ['http://localhost:5173'],
-    credentials: true
+    origin: ['http://localhost:5173', 'http://localhost:5174'], // use from different origin (from server site)
+    credentials: true // send permission of cookies to client side
 }));
 app.use(express.json());
 app.use(cookieParser());
@@ -50,8 +50,8 @@ async function run() {
                     token, // actual token
                     /* options */
                     {
-                        httpOnly: true,
-                        secure: false
+                        httpOnly: true, // prevents client-side scripts from accessing data
+                        secure: false // if website is https then use true
                     }
                 )
                 .send({ success: true }) // acknowledgement from server for client
