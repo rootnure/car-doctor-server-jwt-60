@@ -26,6 +26,31 @@ const client = new MongoClient(uri, {
     }
 });
 
+// middleware (custom)
+const logger = async (req, res, next) => {
+    console.log('called', req.host, req.originalUrl);
+    next();
+}
+
+const verifyToken = async (req, res, next) => {
+    const token = req.cookies?.token;
+    console.log('verify token from middleware', token);
+    if (!token) { // checking if any token exists
+        return res.status(401).send({ message: 'Unauthorized' });
+    }
+    jwt.verify(token, process.env.CAR_DOCTOR_TOKEN_SECRET, (err, decoded) => {
+        // error
+        if (err) { // checking if any error (invalid token, expired token etc.) occur while decoding token
+            console.log(err);
+            return res.status(401).send({ message: 'Unauthorized' })
+        }
+        // if token is valid then it would be decoded
+        console.log('value in the token', decoded);
+        req.user = decoded; // token is valid and set to req
+        next(); // proceed for further functionalities
+    })
+}
+
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -35,13 +60,13 @@ async function run() {
         const bookingsCollection = client.db('carDoctor').collection('bookings');
 
         // auth related api
-        app.post('/jwt', async (req, res) => {
+        app.post('/jwt', logger, async (req, res) => {
             const user = req.body;
             console.log(user);
             const token = jwt.sign(
                 user, // PayLoad
                 process.env.CAR_DOCTOR_TOKEN_SECRET, // secret
-                { expiresIn: '1h' } // expiration info
+                { expiresIn: '24h' } // expiration info
             )
 
             res
@@ -58,7 +83,7 @@ async function run() {
         })
 
         // services related api
-        app.get('/services', async (req, res) => {
+        app.get('/services', logger, async (req, res) => {
             const cursor = serviceCollection.find();
             const result = await cursor.toArray()
             res.send(result);
@@ -77,15 +102,16 @@ async function run() {
         })
 
         // bookings
-        app.post('/booking', async (req, res) => {
+        app.post('/booking', logger, async (req, res) => {
             const booking = req.body;
             const result = await bookingsCollection.insertOne(booking);
             res.send(result);
         })
 
-        app.get('/bookings', async (req, res) => {
+        app.get('/bookings', logger, verifyToken, async (req, res) => {
             console.log(req.query.email);
-            console.log('token', req.cookies.token);
+            // console.log('token', req.cookies.token);
+            console.log('from valid token', req.user);
             let query = {};
             if (req.query?.email) {
                 query = { email: req.query.email }
