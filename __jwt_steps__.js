@@ -20,6 +20,11 @@
  * 1. set cookies with http only. for development -> secure: false
  * 
  * 2. cors settings
+ * app.use(cors({
+    origin: ['http://localhost:5173/'],
+    credentials: true
+}))
  * 
  * 3. set cookie to client side with credential using axios setting
+ * in axios set {withCredentials: true} as last parameter
  */
