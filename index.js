@@ -8,12 +8,12 @@ require('dotenv').config();
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors({
+app.use(cors({ /* cors settings for token */
     origin: ['http://localhost:5173', 'http://localhost:5174'], // use from different origin (from server site)
     credentials: true // send permission of cookies to client side
 }));
 app.use(express.json());
-app.use(cookieParser());
+app.use(cookieParser()); // using cookie-parse middleware
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.3al0nc5.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -32,22 +32,36 @@ const logger = async (req, res, next) => {
     next();
 }
 
+// const verifyToken = async (req, res, next) => {
+//     const token = req.cookies?.token;
+//     console.log('verify token from middleware', token);
+//     if (!token) { // checking if any token exists
+//         return res.status(401).send({ message: 'Unauthorized' });
+//     }
+//     jwt.verify(token, process.env.CAR_DOCTOR_TOKEN_SECRET, (err, decoded) => {
+//         // error
+//         if (err) { // checking if any error (invalid token, expired token etc.) occur while decoding token
+//             console.log(err);
+//             return res.status(401).send({ message: 'Unauthorized' })
+//         }
+//         // if token is valid then it would be decoded
+//         console.log('value in the token', decoded);
+//         req.user = decoded; // token is valid and set to req
+//         next(); // proceed for further functionalities
+//     })
+// }
+
 const verifyToken = async (req, res, next) => {
     const token = req.cookies?.token;
-    console.log('verify token from middleware', token);
-    if (!token) { // checking if any token exists
+    if (!token) {
         return res.status(401).send({ message: 'Unauthorized' });
     }
     jwt.verify(token, process.env.CAR_DOCTOR_TOKEN_SECRET, (err, decoded) => {
-        // error
-        if (err) { // checking if any error (invalid token, expired token etc.) occur while decoding token
-            console.log(err);
-            return res.status(401).send({ message: 'Unauthorized' })
+        if (err) {
+            return res.status(401).send({ message: 'Unauthorized' });
         }
-        // if token is valid then it would be decoded
-        console.log('value in the token', decoded);
-        req.user = decoded; // token is valid and set to req
-        next(); // proceed for further functionalities
+        req.user = decoded;
+        next();
     })
 }
 
@@ -66,7 +80,7 @@ async function run() {
             const token = jwt.sign(
                 user, // PayLoad
                 process.env.CAR_DOCTOR_TOKEN_SECRET, // secret
-                { expiresIn: '24h' } // expiration info
+                { expiresIn: '1h' } // expiration info
             )
 
             res
@@ -112,6 +126,10 @@ async function run() {
             console.log(req.query.email);
             // console.log('token', req.cookies.token);
             console.log('from valid token', req.user);
+            if (req.user.email !== req.query.email) { // check if token email & user email different
+                return res.status(403).send({ message: 'Forbidden' })
+            }
+
             let query = {};
             if (req.query?.email) {
                 query = { email: req.query.email }
